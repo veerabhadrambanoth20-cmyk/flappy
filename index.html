@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flappy Bird Clean</title>
+
+<style>
+body{
+    margin:0;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    background:#70c5ce;
+    overflow:hidden;
+    font-family:Arial;
+}
+
+canvas{
+    background:linear-gradient(#70c5ce,#dff6ff);
+    border:2px solid #000;
+}
+
+#score{
+    position:absolute;
+    top:20px;
+    font-size:40px;
+    color:white;
+    text-shadow:2px 2px 4px black;
+}
+
+#gameOver{
+    position:absolute;
+    display:none;
+    color:white;
+    text-align:center;
+}
+
+button{
+    padding:10px 15px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="score">0</div>
+
+<div id="gameOver">
+    <h1>Game Over</h1>
+    <button onclick="restart()">Restart</button>
+</div>
+
+<canvas id="game" width="400" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let bird, pipes, clouds, score, running;
+
+const gravity = 0.45;
+const flapPower = -8;
+
+const pipeWidth = 60;
+const pipeGap = 150;
+
+function reset(){
+
+    bird = {
+        x:80,
+        y:250,
+        v:0,
+        size:28
+    };
+
+    pipes = [];
+
+    clouds = [
+        {x:60,y:80},
+        {x:200,y:130},
+        {x:340,y:90}
+    ];
+
+    score = 0;
+    running = true;
+
+    document.getElementById("score").innerText = 0;
+    document.getElementById("gameOver").style.display = "none";
+}
+
+reset();
+
+// pipes spawn
+setInterval(()=>{
+    if(running){
+        let top = Math.random()*220 + 60;
+        pipes.push({
+            x:400,
+            top:top,
+            bottom:top+pipeGap,
+            passed:false
+        });
+    }
+},1500);
+
+function update(){
+
+    if(!running) return;
+
+    bird.v += gravity;
+    bird.y += bird.v;
+
+    if(bird.y < 0) bird.y = 0;
+    if(bird.y + bird.size > 600) end();
+
+    pipes.forEach(p=>{
+
+        p.x -= 3;
+
+        const hitX =
+            bird.x + bird.size > p.x &&
+            bird.x < p.x + pipeWidth;
+
+        const hitY =
+            bird.y < p.top ||
+            bird.y + bird.size > p.bottom;
+
+        if(hitX && hitY){
+            end();
+        }
+
+        if(!p.passed && p.x + pipeWidth < bird.x){
+            p.passed = true;
+            score++;
+            document.getElementById("score").innerText = score;
+        }
+    });
+
+    pipes = pipes.filter(p=>p.x>-60);
+
+    clouds.forEach(c=>{
+        c.x -= 0.4;
+        if(c.x < -80) c.x = 450;
+    });
+}
+
+function draw(){
+
+    ctx.clearRect(0,0,400,600);
+
+    // ☀️ SUN
+    ctx.fillStyle="yellow";
+    ctx.beginPath();
+    ctx.arc(340,80,35,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle="rgba(255,255,0,0.3)";
+    ctx.beginPath();
+    ctx.arc(340,80,55,0,Math.PI*2);
+    ctx.fill();
+
+    // ☁️ CLOUDS
+    ctx.fillStyle="white";
+    clouds.forEach(c=>{
+        ctx.beginPath();
+        ctx.arc(c.x,c.y,18,0,Math.PI*2);
+        ctx.arc(c.x+20,c.y+5,22,0,Math.PI*2);
+        ctx.arc(c.x+40,c.y,18,0,Math.PI*2);
+        ctx.fill();
+    });
+
+    // 🟩 PIPES
+    ctx.fillStyle="green";
+    pipes.forEach(p=>{
+        ctx.fillRect(p.x,0,pipeWidth,p.top);
+        ctx.fillRect(p.x,p.bottom,pipeWidth,600);
+    });
+
+    // 🌍 GROUND
+    ctx.fillStyle="#d2a679";
+    ctx.fillRect(0,560,400,40);
+
+    // 🐦 REAL LOOKING BIRD
+    ctx.save();
+    ctx.translate(bird.x + bird.size/2, bird.y + bird.size/2);
+    ctx.rotate(bird.v * 0.05);
+
+    // body (oval bird shape)
+    ctx.fillStyle = "yellow";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, bird.size/2, bird.size/2.3, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // tail (important for bird look)
+    ctx.fillStyle = "orange";
+    ctx.beginPath();
+    ctx.moveTo(-bird.size/2, 0);
+    ctx.lineTo(-bird.size/2 - 10, -6);
+    ctx.lineTo(-bird.size/2 - 10, 6);
+    ctx.closePath();
+    ctx.fill();
+
+    // wing animation
+    let wing = Math.sin(Date.now()/100)*5;
+    ctx.fillStyle="orange";
+    ctx.beginPath();
+    ctx.ellipse(-5, wing, 10, 6, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // eye
+    ctx.fillStyle="white";
+    ctx.beginPath();
+    ctx.arc(6,-5,4,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle="black";
+    ctx.beginPath();
+    ctx.arc(7,-5,2,0,Math.PI*2);
+    ctx.fill();
+
+    // beak
+    ctx.fillStyle="orange";
+    ctx.beginPath();
+    ctx.moveTo(10,0);
+    ctx.lineTo(18,2);
+    ctx.lineTo(10,5);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function loop(){
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+loop();
+
+function flap(){
+    if(running) bird.v = flapPower;
+}
+
+document.addEventListener("keydown",e=>{
+    if(e.code==="Space") flap();
+});
+
+canvas.addEventListener("click",flap);
+
+function end(){
+    running=false;
+    document.getElementById("gameOver").style.display="block";
+}
+
+function restart(){
+    reset();
+}
+</script>
+
+</body>
+</html>
